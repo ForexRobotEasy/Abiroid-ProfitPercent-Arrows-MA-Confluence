@@ -1,0 +1,101 @@
+
+//+------------------------------------------------------------------+
+//|                                           forexroboteasy.com     |
+//|                                           Forex Robot Easy Team  |
+//|                                           Abiroid ProfitPercent   |
+//|                                           Arrows MA Confluence    |
+//+------------------------------------------------------------------+
+
+//---- input parameters
+extern int ma_period = 20; // MA period
+extern int obv_distance = 5; // OBV minimum distance
+extern int adx_period = 14; // ADX period
+extern double supertrend_multiplier = 3.0; // SuperTrend multiplier
+extern double psar_step = 0.02; // PSAR step
+extern double psar_maximum = 0.2; // PSAR maximum
+extern int ema_period = 50; // Higher time frame EMA period
+
+//---- global variables
+int ma_handle; // MA handle
+int obv_handle; // OBV handle
+int heiken_ashi_handle; // Heiken Ashi handle
+int adx_handle; // ADX handle
+int supertrend_handle; // SuperTrend handle
+int psar_handle; // PSAR handle
+int ema_handle; // Higher time frame EMA handle
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    //---- indicators initialization
+    ma_handle = iMA(NULL, 0, ma_period, 0, MODE_SMA, PRICE_CLOSE);
+    obv_handle = iOBV(NULL, 0);
+    heiken_ashi_handle = iCustom(NULL, 0, 'HeikenAshi');
+    adx_handle = iADX(NULL, 0, adx_period, PRICE_CLOSE);
+    supertrend_handle = iCustom(NULL, 0, 'SuperTrend', supertrend_multiplier);
+    psar_handle = iSAR(NULL, 0, psar_step, psar_maximum);
+    ema_handle = iMA(NULL, 0, ema_period, 0, MODE_EMA, PRICE_CLOSE);
+
+    return (INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator deinitialization function                       |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    //---- indicators deinitialization
+    IndicatorRelease(ma_handle);
+    IndicatorRelease(obv_handle);
+    IndicatorRelease(heiken_ashi_handle);
+    IndicatorRelease(adx_handle);
+    IndicatorRelease(supertrend_handle);
+    IndicatorRelease(psar_handle);
+    IndicatorRelease(ema_handle);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime& time[],
+                const double& open[],
+                const double& high[],
+                const double& low[],
+                const double& close[],
+                const long& tick_volume[],
+                const long& volume[],
+                const int& spread[])
+{
+    //---- main signal indicators
+    bool ma_cross = (iMA(NULL, 0, ma_period, 0, MODE_SMA, PRICE_CLOSE, prev_calculated) > iMA(NULL, 0, ma_period, 0, MODE_SMA, PRICE_CLOSE, prev_calculated - 1));
+    bool obv_cross = (iOBV(NULL, 0, prev_calculated) > iOBV(NULL, 0, prev_calculated - 1));
+    bool heiken_ashi_cross = (iCustom(NULL, 0, 'HeikenAshi', prev_calculated) > iCustom(NULL, 0, 'HeikenAshi', prev_calculated - 1));
+
+    //---- validation indicators
+    bool obv_valid = (iOBV(NULL, 0, prev_calculated) - iOBV(NULL, 0, prev_calculated - obv_distance) > 0);
+    bool heiken_ashi_valid = (iCustom(NULL, 0, 'HeikenAshi', prev_calculated) > iCustom(NULL, 0, 'HeikenAshi', prev_calculated - obv_distance));
+    bool adx_valid = (iADX(NULL, 0, adx_period, PRICE_CLOSE, prev_calculated) > 25);
+    bool supertrend_valid = (iCustom(NULL, 0, 'SuperTrend', supertrend_multiplier, prev_calculated) > close[prev_calculated]);
+    bool psar_valid = (iSAR(NULL, 0, psar_step, psar_maximum, prev_calculated) > close[prev_calculated]);
+    bool ema_valid = (iMA(NULL, 0, ema_period, 0, MODE_EMA, PRICE_CLOSE, prev_calculated) > close[prev_calculated]);
+
+    //---- trading signals
+    bool buy_signal = (ma_cross || obv_cross || heiken_ashi_cross) && obv_valid && heiken_ashi_valid && adx_valid && supertrend_valid && psar_valid && ema_valid;
+    bool sell_signal = (ma_cross || obv_cross || heiken_ashi_cross) && obv_valid && heiken_ashi_valid && adx_valid && !supertrend_valid && !psar_valid && !ema_valid;
+
+    //---- trading logic
+    if (buy_signal)
+    {
+        // Execute BUY trade logic here
+    }
+    else if (sell_signal)
+    {
+        // Execute SELL trade logic here
+    }
+
+    return (rates_total);
+}
